@@ -3,7 +3,9 @@ from datetime import datetime
 from fastapi import FastAPI
 from pydantic import BaseModel, Field, field_validator
 
-from sentinel.app.database import init_db, save_event
+from sentinel.app.database import fetch_recent_events, init_db, save_event
+from sentinel.app.detector import detect_threat
+from sentinel.app.risk import calculate_risk
 
 
 class SecurityEvent(BaseModel):
@@ -39,17 +41,21 @@ def health() -> dict[str, str]:
 @app.post("/events")
 def create_event(event: SecurityEvent) -> dict[str, object]:
     event_payload = event.model_dump()
-    event_payload["detected"] = False
-    event_payload["threat_type"] = None
-    event_payload["risk_score"] = 0
-    event_payload["severity"] = None
+    recent_events = fetch_recent_events(limit=50)
+    detection = detect_threat(event_payload, recent_events)
+    risk = calculate_risk(detection["threat_type"])
+
+    event_payload["detected"] = int(detection["detected"])
+    event_payload["threat_type"] = detection["threat_type"]
+    event_payload["risk_score"] = int(risk["risk_score"])
+    event_payload["severity"] = risk["severity"]
 
     save_event(event_payload)
 
     return {
         "message": "Event processed",
-        "detected": False,
-        "threat_type": None,
-        "risk_score": 0,
-        "severity": None,
+        "detected": bool(detection["detected"]),
+        "threat_type": detection["threat_type"],
+        "risk_score": int(risk["risk_score"]),
+        "severity": risk["severity"],
     }
