@@ -9,9 +9,9 @@ The application accepts simulated security events, detects suspicious behavior, 
 ## Installation
 
 ```bash
-python -m venv venv
+python -m venv .venv
 # Windows
-venv\Scripts\activate
+.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
